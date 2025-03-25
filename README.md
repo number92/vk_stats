@@ -1,10 +1,9 @@
 [![Python](https://img.shields.io/badge/-Python-464646?style=flat-square&logo=Python)](https://www.python.org/)
-![PyInstaller](https://img.shields.io/badge/-PyInstaller-464646?style=flat-square)
 ![Pandas](https://img.shields.io/badge/pandas-%23150458.svg?style=flat-square&logo=pandas&logoColor=white)
 ## VKstats
 Приложение собирает статистику всех обьявлений во всех рекламных компаниях клиента и преобразует ее в csv-файл. 
 ### Содержание
-- [Актуальность](#актуальность)
+
 - [Выгружаемые данные](#выгружаемые-данные)
 - [Инструкция](#инструкция)
 
