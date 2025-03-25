@@ -41,10 +41,8 @@ class VkHelper:
         logger.info("Запрос данных...")
         auth_params = self._get_auth_params()
         res = requests.get("https://api.vk.com/method/ads.getAds", params=auth_params)
-        res.raise_for_status()
         response = res.json()
         if er := response.get("error"):
-
             raise_err_by_code(er)
 
         ad_campaign_dict = {}
@@ -62,6 +60,8 @@ class VkHelper:
                 "https://api.vk.com/method/ads.getCampaigns",
                 params=self._get_auth_params(),
             )
+            if er := response.get("error"):
+                raise_err_by_code(er)
             response = res.json().get("response")
             company_dict = {item["id"]: item["name"] for item in response}
             for com_id, company in comp_ids_stat.items():
@@ -106,7 +106,8 @@ class VkHelper:
                                     for key in day:
                                         if key in df_row:
                                             df_row.update({key: day[key]})
-
+                                    # stopped_here:
+                                    # здесь df_row может быть пустой, нужно переделать создание, сначала получать статистику по обьявления, затем присоединять компании , а не наоборот
                                     df.add_rows(df_row)
                     time.sleep(0.3)
                 except HTTPError as er:

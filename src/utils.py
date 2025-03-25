@@ -20,3 +20,6 @@ def raise_err_by_code(err: dict):
 
     elif code == 9:
         raise FloodControlException(err_msg)
+
+    else:
+        raise Exception(err_msg)
