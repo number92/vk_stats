@@ -8,7 +8,7 @@
             "name": "Отладчик Python: Текущий файл",
             "type": "debugpy",
             "request": "launch",
-            "program": "/home/number92/Dev/vk_stats/main.py",
+            "program": "C:\\Dev\\vk_stats\\main.py",
             "console": "integratedTerminal"
         }
     ]

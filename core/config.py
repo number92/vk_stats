@@ -1,4 +1,5 @@
 import os
+from typing import Dict
 from dotenv import load_dotenv
 from pathlib import Path
 from datetime import datetime, timedelta
@@ -23,19 +24,19 @@ URL = (
     + f"ads&response_type=token&v={VERSION}"
 )
 
-DATE_FROM = os.getenv("DATE_FROM")
-DATE_TO = os.getenv("DATE_TO")
+DATE_FROM = os.getenv("DATE_FROM", YESTERDAY)
+DATE_TO = os.getenv("DATE_TO", TODAY)
 
 
-DF_COLUMNS = [
-    "campaign_id",
-    "compaign_name",
-    "ad_id",
-    "impressions",
-    "clicks",
-    "spent",
-    "date",
-    "reach",
-    "link_external_clicks",
-    "join_rate",
-]
+FIELD_TYPE_MAPPING: Dict[str, type] = {
+    "ad_id": int,
+    "campaign_id": int | None,
+    "campaign_name": str | None,
+    "impressions": int | None,
+    "clicks": int | None,
+    "spent": float | None,
+    "date": str | None,
+    "reach": int | None,
+    "link_external_clicks": int | None,
+    "join_rate": float | None,
+}
