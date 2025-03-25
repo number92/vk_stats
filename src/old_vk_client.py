@@ -3,9 +3,9 @@ import time
 import requests
 from requests.exceptions import HTTPError
 from loguru import logger
-from dataclasses import asdict
 from src.ads_df import AdStatistics, StatRow
 from core.config import URL
+from src.utils import raise_err_by_code
 
 
 class VkHelper:
@@ -44,15 +44,12 @@ class VkHelper:
         res.raise_for_status()
         response = res.json()
         if er := response.get("error"):
-            if er.get("error_code") == 5:
-                logger.error(f"HTTP ошибка: {er.get('error_msg')}")
-                print(f"link for update token:\n {URL}")
-                raise ConnectionError(er.get("error_msg"))
+
+            raise_err_by_code(er)
+
         ad_campaign_dict = {}
         for ad in response.get("response"):
-            ad_campaign_dict[ad.get("campaign_id")] = StatRow(
-                ad_id=ad.get("id"), campaign_id=ad.get("campaign_id")
-            )
+            ad_campaign_dict[ad.get("campaign_id")] = StatRow(ad_id=ad.get("id"), campaign_id=ad.get("campaign_id"))
         return ad_campaign_dict
 
     def get_campaign_names(self) -> dict[int, dict]:
@@ -92,35 +89,37 @@ class VkHelper:
             q_params.update(self._get_auth_params())
             for part in ads_list:
                 try:
+                    time.sleep(1)
                     q_params.update({"ids": part})
-                    r = requests.get(
-                        "https://api.vk.com/method/ads.getStatistics", params=q_params
-                    )
+                    r = requests.get("https://api.vk.com/method/ads.getStatistics", params=q_params)
+                    if er := r.json().get("error"):
+                        raise_err_by_code(er)
                     data_stats = r.json().get("response")
-                    for ad in data_stats:
-                        for stat in ad.get("stats"):
-                            if not stat:
-                                break
-                            row = stat_rows.get(ad.get("id"))
-                            for key in stat:
-                                if key in row:
-                                    row[key] = stat[key]
-                                df.add_rows(row)
-                    r.raise_for_status()
+                    if data_stats:
+
+                        for ad in data_stats:
+                            ad_stats = ad.get("stats", None)
+                            if ad_stats:
+
+                                for day in ad_stats:
+                                    df_row = stat_rows.get(ad.get("id"))
+                                    for key in day:
+                                        if key in df_row:
+                                            df_row.update({key: day[key]})
+
+                                    df.add_rows(df_row)
                     time.sleep(0.3)
                 except HTTPError as er:
                     logger.error(f"Ошибка в запросе API {er}")
 
         except ConnectionError as err:
             logger.error(f"Ошибка в запросе API{err}")
-            raise ConnectionError(
-                "Не удалось установить соединение с сервером"
-            ) from err
+            raise ConnectionError("Не удалось установить соединение с сервером") from err
 
         dataframe = df.get_dataframe()
 
         if dataframe.empty:
             logger.info("Список данных пуст")
             sys.exit(0)
-
+        logger.info("Формирование датафрейма завершено")
         return dataframe

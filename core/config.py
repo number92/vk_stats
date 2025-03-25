@@ -35,7 +35,7 @@ FIELD_TYPE_MAPPING: Dict[str, type] = {
     "impressions": int | None,
     "clicks": int | None,
     "spent": float | None,
-    "date": str | None,
+    "day": str | None,
     "reach": int | None,
     "link_external_clicks": int | None,
     "join_rate": float | None,
