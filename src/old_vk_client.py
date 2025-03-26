@@ -1,4 +1,3 @@
-import sys
 import time
 import requests
 from requests.exceptions import HTTPError
@@ -118,6 +117,6 @@ class VkHelper:
 
         if dataframe.empty:
             logger.info("Список данных пуст")
-            sys.exit(0)
+            raise ResponseEmptyException(detail="Датафрейм пуст")
         logger.info("Формирование датафрейма завершено")
         return dataframe
