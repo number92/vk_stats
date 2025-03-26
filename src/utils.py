@@ -10,6 +10,10 @@ class BadTokenException(Exception):
     pass
 
 
+class ResponseEmptyException(Exception):
+    pass
+
+
 def raise_err_by_code(err: dict):
     logger.error(err.get("error_msg"))
     code = err.get("error_code")

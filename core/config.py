@@ -27,11 +27,13 @@ URL = (
 DATE_FROM = os.getenv("DATE_FROM", YESTERDAY)
 DATE_TO = os.getenv("DATE_TO", TODAY)
 
-
-FIELD_TYPE_MAPPING: Dict[str, type] = {
+REQUIRED_FIELD_MAPING = {
     "ad_id": int,
     "campaign_id": int | None,
     "campaign_name": str | None,
+}
+
+FIELD_ADSTAT_MAPING = {
     "impressions": int | None,
     "clicks": int | None,
     "spent": float | None,
@@ -40,3 +42,6 @@ FIELD_TYPE_MAPPING: Dict[str, type] = {
     "link_external_clicks": int | None,
     "join_rate": float | None,
 }
+
+
+FIELD_TYPE_MAPPING: Dict[str, type] = REQUIRED_FIELD_MAPING | FIELD_ADSTAT_MAPING

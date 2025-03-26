@@ -5,7 +5,7 @@ from requests.exceptions import HTTPError
 from loguru import logger
 from src.ads_df import AdStatistics, StatRow
 from core.config import URL
-from src.utils import raise_err_by_code
+from src.utils import ResponseEmptyException, raise_err_by_code
 
 
 class VkHelper:
@@ -35,51 +35,44 @@ class VkHelper:
             parts.append(",".join(map(str, part)))
         return parts
 
-    def get_ads(self) -> dict[int, StatRow]:
-        """Возвращает соварь где ключ id компании , значение обьект StatRow"""
+    def get_ads(self) -> dict[int, int]:
+        """Возвращает соварь где ключ id обьявления , значение id campaign"""
 
         logger.info("Запрос данных...")
         auth_params = self._get_auth_params()
-        res = requests.get("https://api.vk.com/method/ads.getAds", params=auth_params)
-        response = res.json()
+        req = requests.get("https://api.vk.com/method/ads.getAds", params=auth_params)
+        response = req.json()
         if er := response.get("error"):
             raise_err_by_code(er)
+        id_ads = {item["id"]: item["campaign_id"] for item in response.get("response")}
+        if not id_ads:
+            logger.error(response.get("response"))
+            raise ResponseEmptyException(detail="Список обьявлений пуст")
+        return id_ads
 
-        ad_campaign_dict = {}
-        for ad in response.get("response"):
-            ad_campaign_dict[ad.get("campaign_id")] = StatRow(ad_id=ad.get("id"), campaign_id=ad.get("campaign_id"))
-        return ad_campaign_dict
+    def get_campaign_names(self) -> dict[int, str]:
+        """Получение словаря id кампании : имя кампании"""
 
-    def get_campaign_names(self) -> dict[int, dict]:
+        logger.info("Получение имен компаний...")
+        req = requests.get(
+            "https://api.vk.com/method/ads.getCampaigns",
+            params=self._get_auth_params(),
+        )
+        response = req.json()
+        if er := response.get("error"):
+            raise_err_by_code(er)
+        company_dict = {item["id"]: item["name"] for item in response.get("response")}
+        if not company_dict:
+            raise ResponseEmptyException(detail="Список кампаний пуст")
+        return company_dict
 
-        try:
-            comp_ids_stat = self.get_ads()
-            logger.info("Получение имен компаний...")
-            result_stat_rows = {}
-            res = requests.get(
-                "https://api.vk.com/method/ads.getCampaigns",
-                params=self._get_auth_params(),
-            )
-            if er := response.get("error"):
-                raise_err_by_code(er)
-            response = res.json().get("response")
-            company_dict = {item["id"]: item["name"] for item in response}
-            for com_id, company in comp_ids_stat.items():
-                row = company.__dict__
-                row.update({"campaign_name": company_dict.get(company.campaign_id)})
-                company.campaign_name = company_dict.get(company.campaign_id)
-                result_stat_rows[row.get("ad_id")] = row
-
-        except Exception as err:
-            logger.error(f"Ошибка{err}")
-            raise KeyError(f"Ошибка при получение id компаний: {err}")
-        return result_stat_rows
-
-    def data_proccesing(self, stat_rows: dict[int, dict], date_from: str, date_to: str):
+    def data_proccesing(self, date_from: str, date_to: str):
         df = AdStatistics()
         logger.debug("Запрос API: статистика компании...")
+        ad_ids = self.get_ads()
+        compaign_names = self.get_campaign_names()
         try:
-            ads_list = self._split_keys_to_parts(list(stat_rows.keys()))
+            ads_list = self._split_keys_to_parts(list(ad_ids.keys()))
             q_params = {
                 "ids_type": "ad",
                 "period": "day",
@@ -91,7 +84,9 @@ class VkHelper:
                 try:
                     time.sleep(1)
                     q_params.update({"ids": part})
-                    r = requests.get("https://api.vk.com/method/ads.getStatistics", params=q_params)
+                    r = requests.get(
+                        "https://api.vk.com/method/ads.getStatistics", params=q_params
+                    )
                     if er := r.json().get("error"):
                         raise_err_by_code(er)
                     data_stats = r.json().get("response")
@@ -100,14 +95,16 @@ class VkHelper:
                         for ad in data_stats:
                             ad_stats = ad.get("stats", None)
                             if ad_stats:
-
                                 for day in ad_stats:
-                                    df_row = stat_rows.get(ad.get("id"))
+                                    cmp_id = ad_ids.get(ad.get("id"))
+                                    df_row = StatRow(
+                                        ad_id=ad.get("id"),
+                                        campaign_id=cmp_id,
+                                        campaign_name=compaign_names.get(cmp_id),
+                                    ).__dict__
                                     for key in day:
                                         if key in df_row:
                                             df_row.update({key: day[key]})
-                                    # stopped_here:
-                                    # здесь df_row может быть пустой, нужно переделать создание, сначала получать статистику по обьявления, затем присоединять компании , а не наоборот
                                     df.add_rows(df_row)
                     time.sleep(0.3)
                 except HTTPError as er:
@@ -115,7 +112,9 @@ class VkHelper:
 
         except ConnectionError as err:
             logger.error(f"Ошибка в запросе API{err}")
-            raise ConnectionError("Не удалось установить соединение с сервером") from err
+            raise ConnectionError(
+                "Не удалось установить соединение с сервером"
+            ) from err
 
         dataframe = df.get_dataframe()
 
