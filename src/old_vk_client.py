@@ -4,7 +4,6 @@ import requests
 from requests.exceptions import HTTPError
 from loguru import logger
 from src.ads_df import AdStatistics, StatRow
-from core.config import URL
 from src.utils import ResponseEmptyException, raise_err_by_code
 
 
@@ -15,7 +14,6 @@ class VkHelper:
         self.acc_id = acc_id
         self.token = long_token
         self.client_id = client_id
-        # self.df = AdStatistics()
 
     def _get_auth_params(self) -> dict:
         """Параметры для успешного запроса"""
